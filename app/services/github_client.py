@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from fastapi import HTTPException
 from app.config import GITHUB_PAT, API_VERSION, USER_AGENT
@@ -14,20 +15,18 @@ class GitHubAsyncClient:
             self.headers["Authorization"] = f"Bearer {GITHUB_PAT}"
 
     async def fetch_raw_profile_data(self, username: str) -> dict:
-        """Fetches base profile and repo maps simultaneously via an async context."""
+        """Fetches base profile and repo maps simultaneously via standard asyncio gathering."""
         async with httpx.AsyncClient(headers=self.headers) as client:
             profile_url = f"{self.base_url}/users/{username}"
             repos_url = f"{self.base_url}/users/{username}/repos?per_page=30&sort=updated"
             
             try:
-                # Fire network calls concurrently to save latency overhead
-                profile_response, repos_response = await httpx.Client.get_all(
-                    client.get(profile_url),
-                    client.get(repos_url)
-                ) if hasattr(httpx, 'Client') else (
-                    await client.get(profile_url),
-                    await client.get(repos_url)
-                )
+                # Define coroutines cleanly
+                profile_task = client.get(profile_url)
+                repos_task = client.get(repos_url)
+                
+                # Execute concurrently via Python event loop
+                profile_response, repos_response = await asyncio.gather(profile_task, repos_task)
                 
                 # Check for bad input (User doesn't exist)
                 if profile_response.status_code == 404:
