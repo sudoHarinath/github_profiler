@@ -50,5 +50,21 @@ class GitHubAsyncClient:
                     status_code=503, 
                     detail="GitHub API is temporarily unreachable or slow."
                 )
+            
+    async def fetch_repo_readme(self, username: str, repo_name: str) -> str:
+        """Fetches the raw README.md text content directly from a specific repository."""
+        async with httpx.AsyncClient(headers=self.headers) as client:
+            # Using the raw media type header directly delivers the markdown string payload
+            readme_headers = {**self.headers, "Accept": "application/vnd.github.raw+json"}
+            url = f"{self.base_url}/repos/{username}/{repo_name}/readme"
+            
+            try:
+                response = await client.get(url, headers=readme_headers)
+                if response.status_code == 404:
+                    return "No README.md documentation file found in this repository."
+                response.raise_for_status()
+                return response.text
+            except Exception:
+                return "Temporarily unable to retrieve project documentation."
 
 github_client = GitHubAsyncClient()

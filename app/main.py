@@ -34,5 +34,40 @@ async def get_developer_scorecard(username: str):
 async def serve_dashboard():
     return FileResponse(os.path.join("static", "index.html"))
 
+
+@app.get("/api/repo/{username}/{repo_name}/readme")
+async def get_repo_readme_insights(username: str, repo_name: str):
+    username_clean = username.strip().lower()
+    repo_clean = repo_name.strip()
+    
+    cache_key = f"readme:{username_clean}:{repo_clean}"
+    cached_readme = profile_cache.get(cache_key)
+    if cached_readme:
+        return {"source": "cache", "insights": cached_readme}
+        
+    raw_readme_text = await github_client.fetch_repo_readme(username_clean, repo_clean)
+    
+    # Simple Keyword Extraction Engine
+    # Scans the README text layout for common deployment/library keywords
+    target_keywords = [
+        "docker", "kubernetes", "aws", "prisma", "graphql", "redux", "pytest",
+        "jest", "ci/cd", "postgresql", "mongodb", "redis", "auth0", "jwt"
+    ]
+    detected = [kw for kw in target_keywords if kw in raw_readme_text.lower()]
+    
+    # Extract the first 160 characters as a summary snapshot preview snippet
+    clean_lines = [line.strip("#* \t") for line in raw_readme_text.split("\n") if line.strip()]
+    summary_snippet = clean_lines[0] if clean_lines else "No description available."
+    if len(summary_snippet) > 120:
+        summary_snippet = summary_snippet[:120] + "..."
+        
+    insights = {
+        "summary": summary_snippet,
+        "keywords": detected
+    }
+    
+    profile_cache.set(cache_key, insights)
+    return {"source": "network", "insights": insights}
+
 # Allows loading app.js or secondary CSS styles out of the static folder context
 app.mount("/static", StaticFiles(directory="static"), name="static")
