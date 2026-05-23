@@ -3,112 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSS Contributor Scorecard & Profiler</title>
+    <title>OSS Architecture Diagnostic Workspace</title>
     <!-- Tailwind Engine -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- ChartJS Engine -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
-    <div class="max-w-6xl mx-auto px-4 py-10">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+    <div class="max-w-6xl mx-auto px-4 py-8">
         
-        <!-- Header Controls -->
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-black tracking-tight bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                OSS Recruiter Profiler
-            </h1>
-            <p class="text-slate-400 mt-2 text-sm">Evaluating codebase freshness, originality, and stack alignment for early-career developers</p>
+        <!-- Search and Global Controls Header -->
+        <header class="mb-8 border-b border-slate-900 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+                    OSS Architecture Workspace
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">Exploratory diagnostic profile engine for open source code footprints</p>
+            </div>
             
-            <div class="mt-6 max-w-md mx-auto flex gap-2">
-                <input type="text" id="usernameInput" placeholder="Enter GitHub username (e.g. octocat)" 
-                       class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:outline-none focus:border-cyan-500 transition-colors placeholder-slate-500 text-sm">
-                <button id="searchBtn" class="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors cursor-pointer shadow-lg shadow-cyan-950/50">
-                    Profile
+            <div class="flex gap-2 max-w-md w-full md:w-auto">
+                <input type="text" id="usernameInput" placeholder="Enter GitHub username..." 
+                       class="w-full md:w-64 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-cyan-500 transition-colors placeholder-slate-600">
+                <button id="searchBtn" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-white text-slate-950 text-sm font-bold transition-colors cursor-pointer shadow-md">
+                    Analyze
                 </button>
             </div>
-            <div id="errorBanner" class="hidden max-w-md mx-auto mt-4 p-3 bg-red-950/40 border border-red-800/60 text-red-300 rounded-xl text-xs text-center"></div>
         </header>
 
-        <!-- Main Dashboard Surface -->
-        <main id="scorecardContent" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="errorBanner" class="hidden max-w-xl mx-auto mb-6 p-3 bg-red-950/40 border border-red-900/60 text-red-300 rounded-xl text-xs text-center font-medium"></div>
+
+        <!-- Interactive Explorer Shell (Hidden until search executes) -->
+        <div id="workspaceShell" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             
-            <!-- Column 1: Identity & Vetting Badges -->
-            <div class="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 flex flex-col items-center justify-between backdrop-blur-sm">
-                <div class="w-full text-center flex flex-col items-center">
-                    <img id="devAvatar" src="" alt="Developer Avatar" class="w-24 h-24 rounded-full border-2 border-slate-800 mb-4 shadow-xl">
-                    <h2 id="devName" class="text-xl font-bold tracking-tight"></h2>
-                    <p id="devHandle" class="text-cyan-400 text-xs font-mono"></p>
-                    <p id="devBio" class="text-slate-400 text-xs mt-4 italic line-clamp-3 px-2"></p>
-                </div>
-                
-                <!-- Dynamic Recruiter Badges Container -->
-                <div class="w-full mt-6 pt-6 border-t border-slate-900">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-3">Recruiter Evaluation Tags</span>
-                    <div id="recruiterTags" class="flex flex-wrap gap-1.5"></div>
+            <!-- Structural Sidebar Panel: Demographics & Navigation -->
+            <div class="lg:col-span-1 space-y-4">
+                <!-- Profile Identity Summary Card -->
+                <div class="bg-slate-900/30 border border-slate-900/80 rounded-2xl p-5 text-center flex flex-col items-center backdrop-blur-sm">
+                    <img id="devAvatar" src="" alt="Developer Avatar" class="w-20 h-20 rounded-full border border-slate-800 mb-3 shadow-md">
+                    <h2 id="devName" class="text-base font-bold tracking-tight"></h2>
+                    <p id="devHandle" class="text-cyan-400 text-xs font-mono mt-0.5"></p>
+                    <div id="devTenure" class="text-[10px] bg-slate-800/60 px-2 py-0.5 border border-slate-800 rounded-md text-slate-400 mt-2 font-medium"></div>
+                    <p id="devBio" class="text-slate-400 text-xs mt-3 italic line-clamp-3 px-1"></p>
                 </div>
 
-                <div class="w-full mt-4 pt-4 text-[10px] text-slate-600 font-mono flex justify-between">
-                    <span>ENGINE: IN-PROCESS</span>
-                    <span>STORE: <span id="dataSourceField" class="uppercase text-slate-400 font-bold"></span></span>
-                </div>
+                <!-- Interactive Tab Controller Selector -->
+                <nav class="bg-slate-900/20 border border-slate-900/60 p-2 rounded-2xl flex flex-col gap-1">
+                    <button id="tabBtn-diagnostic" class="tab-btn w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-cyan-600/10 text-cyan-400 border border-cyan-500/10">
+                        Diagnostic Pillars
+                    </button>
+                    <button id="tabBtn-matrix" class="tab-btn w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-slate-400 hover:bg-slate-900/40 hover:text-slate-200">
+                        Repository Explorer Matrix
+                    </button>
+                </nav>
             </div>
 
-            <!-- Column 2: Weighted Performance Pillars -->
-            <div class="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm">
-                <div>
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-4">Core Capability Framework</span>
+            <!-- Main Interactive Display Surface Area -->
+            <div class="lg:col-span-3">
+                
+                <!-- WORKSPACE SURFACE AREA 1: DIAGNOSTIC PILLARS TAB -->
+                <div id="tabContent-diagnostic" class="workspace-tab space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Pillar Sub-Card: Velocity Axis -->
+                        <div class="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Axis A: Velocity & Cadence</span>
+                                <div id="metricCadence" class="text-sm font-bold text-slate-200 mt-2"></div>
+                                <div class="mt-4 space-y-2 border-t border-slate-900/60 pt-4 text-xs">
+                                    <div class="flex justify-between"><span class="text-slate-400">Original Project Count:</span><span id="subMetricOriginalCount" class="font-bold">0</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-400">Forked Repositories:</span><span id="subMetricForkCount" class="font-bold text-slate-400">0</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-400">Codebase Originality Ratio:</span><span id="subMetricOriginalRatio" class="font-bold text-emerald-400">0%</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pillar Sub-Card: Authority Axis -->
+                        <div class="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Axis B: Community Authority</span>
+                                <div id="metricAuthorityTier" class="text-sm font-bold text-amber-400 mt-2"></div>
+                                <div class="mt-4 space-y-2 border-t border-slate-900/60 pt-4 text-xs">
+                                    <div class="flex justify-between"><span class="text-slate-400">Aggregated Stars Earned:</span><span id="subMetricStars" class="font-bold text-amber-400">0 ★</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-400">Downstream Ecosystem Forks:</span><span id="subMetricForks" class="font-bold">0</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footprint Infrastructure Block -->
+                    <div class="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-4">Axis C: Stack Footprint Signatures</span>
+                            <div id="specializationList" class="space-y-3.5"></div>
+                        </div>
+                        <div class="flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Linguistic Profile Allocation</span>
+                            <div class="relative min-h-[140px] flex justify-center items-center mt-4">
+                                <canvas id="languageChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WORKSPACE SURFACE AREA 2: INTERACTIVE DATA MATRIX EXPLORER TAB -->
+                <div id="tabContent-matrix" class="workspace-tab hidden space-y-4">
                     
-                    <!-- Main DCI Metric View -->
-                    <div class="bg-slate-950/50 border border-slate-900 p-5 rounded-xl text-center mb-4">
-                        <span class="text-xs font-semibold text-slate-400 block">Developer Capability Index (DCI)</span>
-                        <div class="flex items-baseline justify-center gap-1 mt-1">
-                            <span id="metricDCI" class="text-5xl font-black text-emerald-400 tracking-tight">0</span>
-                            <span class="text-slate-500 text-sm font-bold">/100</span>
-                        </div>
+                    <!-- Search Filtering Controls Header Bar -->
+                    <div class="bg-slate-900/30 border border-slate-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <input type="text" id="matrixSearchInput" placeholder="Filter repositories by keyword name..." 
+                               class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-900 text-xs text-slate-200 w-full sm:w-64 focus:outline-none focus:border-cyan-500 transition-colors placeholder-slate-600">
+                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                            <input type="checkbox" id="matrixFilterForks" class="rounded border-slate-800 bg-slate-950 text-cyan-500 accent-cyan-600">
+                            Exclusively Display Original Codebases
+                        </label>
                     </div>
 
-                    <!-- Supporting Indicator Matrix -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-slate-950/20 border border-slate-900/60 p-3 rounded-xl">
-                            <span class="text-[10px] font-medium text-slate-400 block">Code Originality</span>
-                            <div id="metricOriginality" class="text-lg font-bold text-slate-200 mt-0.5">0%</div>
-                        </div>
-                        <div class="bg-slate-950/20 border border-slate-900/60 p-3 rounded-xl">
-                            <span class="text-[10px] font-medium text-slate-400 block">Avg Push Cadence</span>
-                            <div id="metricFreshness" class="text-lg font-bold text-slate-200 mt-0.5">0 days</div>
-                        </div>
-                        <div class="bg-slate-950/20 border border-slate-900/60 p-3 rounded-xl">
-                            <span class="text-[10px] font-medium text-slate-400 block">Original Repos</span>
-                            <div id="metricOriginalCount" class="text-lg font-bold text-slate-200 mt-0.5">0</div>
-                        </div>
-                        <div class="bg-slate-950/20 border border-slate-900/60 p-3 rounded-xl">
-                            <span class="text-[10px] font-medium text-slate-400 block">Total Stars Earned</span>
-                            <div id="metricStars" class="text-lg font-bold text-amber-400 mt-0.5">0 ★</div>
+                    <!-- Dynamic Sorting Grid Spreadsheet View -->
+                    <div class="bg-slate-900/10 border border-slate-900 rounded-2xl overflow-hidden shadow-inner">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-slate-900/50 text-slate-400 font-mono text-[10px] border-b border-slate-900 tracking-wider uppercase">
+                                    <tr>
+                                        <th class="p-3.5 font-semibold">Repository Name</th>
+                                        <th class="p-3.5 font-semibold text-center cursor-pointer hover:text-slate-200 transition-colors" onclick="sortMatrixData('stars')">Stars ↕</th>
+                                        <th class="p-3.5 font-semibold text-center cursor-pointer hover:text-slate-200 transition-colors" onclick="sortMatrixData('forks')">Forks ↕</th>
+                                        <th class="p-3.5 font-semibold text-center cursor-pointer hover:text-slate-200 transition-colors" onclick="sortMatrixData('size_kb')">Size ↕</th>
+                                        <th class="p-3.5 font-semibold text-center cursor-pointer hover:text-slate-200 transition-colors" onclick="sortMatrixData('last_push_days')">Recency ↕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matrixTableBody" class="divide-y divide-slate-900/40 text-slate-300">
+                                    <!-- Dynamic row injection points -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 mt-4 italic leading-normal">
-                    *DCI algorithm penalizes bulk fork-cloning and rewards active, original codebase shipping.
-                </p>
-            </div>
 
-            <!-- Column 3: Stack Alignment & Language Maps -->
-            <div class="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm gap-6">
-                
-                <!-- Top Section: Text-Scanned Specializations -->
-                <div>
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-3">Ecosystem & Stack Specialization</span>
-                    <div id="specializationList" class="space-y-3"></div>
-                </div>
-
-                <!-- Bottom Section: Linguistic Doughnut -->
-                <div class="pt-4 border-t border-slate-900 flex-1 flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Dominant Linguistic Profile</span>
-                    <div class="relative min-h-[140px] flex justify-center items-center">
-                        <canvas id="languageChart"></canvas>
-                    </div>
-                </div>
-                
             </div>
         </main>
     </div>

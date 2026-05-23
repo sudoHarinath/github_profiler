@@ -1,19 +1,40 @@
 let chartInstance = null;
+let completeRepositoryDataset = []; // Global memory array for offline filtering manipulations
+let activeSortProperty = 'stars';
+let isSortingDirectionAscending = false;
 
 document.getElementById('searchBtn').addEventListener('click', executeSearch);
 document.getElementById('usernameInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') executeSearch();
 });
 
+// Setup Real-time In-Memory Filter Event Receivers
+document.getElementById('matrixSearchInput').addEventListener('input', runDynamicMatrixEvaluation);
+document.getElementById('matrixFilterForks').addEventListener('change', runDynamicMatrixEvaluation);
+
+// Setup Layout Tab Controllers
+document.getElementById('tabBtn-diagnostic').addEventListener('click', () => switchWorkspaceTab('diagnostic'));
+document.getElementById('tabBtn-matrix').addEventListener('click', () => switchWorkspaceTab('matrix'));
+
+function switchWorkspaceTab(targetId) {
+    document.querySelectorAll('.workspace-tab').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.className = "tab-btn w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-slate-400 hover:bg-slate-900/40 hover:text-slate-200";
+    });
+
+    document.getElementById(`tabContent-${targetId}`).classList.remove('hidden');
+    document.getElementById(`tabBtn-${targetId}`).className = "tab-btn w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-cyan-600/10 text-cyan-400 border border-cyan-500/10";
+}
+
 async function executeSearch() {
     const username = document.getElementById('usernameInput').value.trim();
     const errorBanner = document.getElementById('errorBanner');
-    const contentArea = document.getElementById('scorecardContent');
+    const shell = document.getElementById('workspaceShell');
     
     errorBanner.classList.add('hidden');
     
     if (!username) {
-        showError("Please fill out the username input parameter.");
+        showError("Please enter a username string parameter.");
         return;
     }
 
@@ -22,40 +43,42 @@ async function executeSearch() {
         const payload = await response.json();
 
         if (!response.ok) {
-            showError(payload.detail || "An unexpected system anomaly has interrupted processing.");
-            contentArea.classList.add('hidden');
+            showError(payload.detail || "System service fault executing retrieval routing.");
+            shell.classList.add('hidden');
             return;
         }
 
-        const scorecard = payload.data;
-        const insights = scorecard.recruiter_insights;
-        contentArea.classList.remove('hidden');
+        const data = payload.data;
+        completeRepositoryDataset = data.raw_matrix; // Capture dataset snapshot
+        shell.classList.remove('hidden');
 
-        // Hydrate Demographics
-        document.getElementById('devAvatar').src = scorecard.avatar_url;
-        document.getElementById('devName').innerText = scorecard.name;
-        document.getElementById('devHandle').innerText = `@${scorecard.username}`;
-        document.getElementById('devBio').innerText = scorecard.bio || "No profile biography statement configured.";
-        document.getElementById('dataSourceField').innerText = payload.source;
+        // Hydrate Core Demographics Card
+        document.getElementById('devAvatar').src = data.avatar_url;
+        document.getElementById('devName').innerText = data.name;
+        document.getElementById('devHandle').innerText = `@${data.username}`;
+        document.getElementById('devTenure').innerText = `Ecosystem Tenure: ${data.profile_tenure_years} Years`;
+        document.getElementById('devBio').innerText = data.bio || "No biography statement configured.";
 
-        // Hydrate Recruiter Scoring Pillars
-        document.getElementById('metricDCI').innerText = insights.capability_index;
-        document.getElementById('metricOriginality').innerText = `${insights.originality_percentage}%`;
-        document.getElementById('metricOriginalCount').innerText = scorecard.metrics.original_repos;
-        document.getElementById('metricStars').innerText = `${scorecard.metrics.total_stars} ★`;
-        
-        const freshDays = insights.avg_days_since_push;
-        document.getElementById('metricFreshness').innerText = freshDays === null ? "N/A" : `${freshDays} days`;
+        // Hydrate Axis A: Velocity Elements
+        document.getElementById('metricCadence').innerText = data.pillars.velocity.cadence_status;
+        document.getElementById('subMetricOriginalCount').innerText = data.pillars.velocity.original_count;
+        document.getElementById('subMetricForkCount').innerText = data.pillars.velocity.forked_count;
+        document.getElementById('subMetricOriginalRatio').innerText = `${data.pillars.velocity.originality_ratio_pct}%`;
 
-        // Render Badges and Stack Progress Metrics
-        hydrateRecruiterBadges(insights.recruiter_tags);
-        hydrateSpecializations(insights.specialization_distribution);
+        // Hydrate Axis B: Authority Elements
+        document.getElementById('metricAuthorityTier').innerText = data.pillars.authority.tier;
+        document.getElementById('subMetricStars').innerText = `${data.pillars.authority.stars} ★`;
+        document.getElementById('subMetricForks').innerText = data.pillars.authority.forks;
 
-        // Render Language Allocation Graph
-        renderLanguagesChart(scorecard.languages);
+        // Hydrate Axis C: Footprint Distributions
+        hydrateSpecializationsList(data.pillars.footprint.framework_distribution);
+        renderLanguagesChart(data.pillars.footprint.languages_percentage);
+
+        // Run Initial Render of the Interactive Spreadsheet view
+        runDynamicMatrixEvaluation();
 
     } catch (err) {
-        showError("The local micro-web service appears to be unresponsive.");
+        showError("The background parsing framework is currently unresponsive.");
     }
 }
 
@@ -65,59 +88,94 @@ function showError(msg) {
     banner.classList.remove('hidden');
 }
 
-function hydrateRecruiterBadges(tags) {
-    const container = document.getElementById('recruiterTags');
-    container.innerHTML = ''; // Wipe existing children
-    
-    tags.forEach(tag => {
-        const badge = document.createElement('span');
-        badge.className = "text-[10px] px-2.5 py-1 rounded-md font-bold tracking-wide border ";
-        
-        // Context-aware badge styling logic
-        if (tag === "Active Shipper") {
-            badge.className += "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-        } else if (tag === "Independent Creator") {
-            badge.className += "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
-        } else if (tag === "Community Validated") {
-            badge.className += "bg-amber-500/10 text-amber-400 border-amber-500/20";
-        } else {
-            badge.className += "bg-slate-800 text-slate-400 border-slate-700";
-        }
-        
-        badge.innerText = tag;
-        container.appendChild(badge);
-    });
-}
-
-function hydrateSpecializations(specs) {
+function hydrateSpecializationsList(specs) {
     const container = document.getElementById('specializationList');
     container.innerHTML = '';
-    
     const entries = Object.entries(specs);
+    
     if (entries.length === 0) {
-        container.innerHTML = '<div class="text-xs text-slate-500 italic py-2">No distinctive framework signatures detected in original code.</div>';
+        container.innerHTML = '<div class="text-xs text-slate-500 italic py-2">No definitive framework signatures detected in original codebases.</div>';
         return;
     }
 
-    // Determine scalar factor for relative progress bars (highest score becomes 100%)
     const maxVal = Math.max(...entries.map(e => e[1]), 1);
-
     entries.forEach(([stack, score]) => {
         const pct = Math.min(Math.round((score / maxVal) * 100), 100);
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = "space-y-1";
-        wrapper.innerHTML = `
-            <div class="flex justify-between text-xs font-medium">
-                <span class="text-slate-300">${stack}</span>
-                <span class="text-slate-400 font-mono text-[11px]">${pct}% match</span>
+        const item = document.createElement('div');
+        item.className = "space-y-1";
+        item.innerHTML = `
+            <div class="flex justify-between text-xs font-semibold">
+                <span class="text-slate-300 text-[11px]">${stack}</span>
+                <span class="text-slate-500 font-mono text-[10px]">${pct}% weight</span>
             </div>
-            <div class="w-full bg-slate-950 rounded-full h-1.5 border border-slate-900">
-                <div class="bg-cyan-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+            <div class="w-full bg-slate-950 rounded-full h-1 border border-slate-900">
+                <div class="bg-cyan-500 h-1 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
             </div>
         `;
-        container.appendChild(wrapper);
+        container.appendChild(item);
     });
+}
+
+function runDynamicMatrixEvaluation() {
+    const keyword = document.getElementById('matrixSearchInput').value.toLowerCase();
+    const hideForks = document.getElementById('matrixFilterForks').checked;
+    const tbody = document.getElementById('matrixTableBody');
+    tbody.innerHTML = '';
+
+    // Step A: Multi-criteria filtering over local memory array
+    let filteredList = completeRepositoryDataset.filter(repo => {
+        const matchesKeyword = repo.name.toLowerCase().includes(keyword);
+        const matchesForkRule = hideForks ? !repo.is_fork : true;
+        return matchesKeyword && matchesForkRule;
+    });
+
+    // Step B: Sort executing over filtered arrays
+    filteredList.sort((a, b) => {
+        let valA = a[activeSortProperty];
+        let valB = b[activeSortProperty];
+        
+        if (valA < valB) return isSortingDirectionAscending ? -1 : 1;
+        if (valA > valB) return isSortingDirectionAscending ? 1 : -1;
+        return 0;
+    });
+
+    // Step C: Render HTML rows dynamically
+    if (filteredList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500 italic text-xs">No repositories matched your filter criteria.</td></tr>`;
+        return;
+    }
+
+    filteredList.forEach(repo => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-slate-900/30 font-medium transition-colors border-b border-slate-900/20";
+        
+        const formatPush = repo.last_push_days === 0 ? "Today" : repo.last_push_days === 999 ? "Never" : `${repo.last_push_days}d ago`;
+        const sizeFormatted = repo.size_kb > 1024 ? `${(repo.size_kb / 1024).toFixed(1)} MB` : `${repo.size_kb} KB`;
+        
+        row.innerHTML = `
+            <td class="p-3 max-w-[200px] truncate">
+                <span class="font-bold text-slate-200 text-xs block truncate">${repo.name}</span>
+                <span class="text-[9px] font-mono uppercase font-bold tracking-wider ${repo.is_fork ? 'text-slate-500' : 'text-cyan-400'}">
+                    ${repo.is_fork ? 'Forked Repo' : `Original • ${repo.language}`}
+                </span>
+            </td>
+            <td class="p-3 text-center text-slate-300 font-mono text-[11px]">${repo.stars}</td>
+            <td class="p-3 text-center text-slate-400 font-mono text-[11px]">${repo.forks}</td>
+            <td class="p-3 text-center text-slate-400 font-mono text-[11px]">${sizeFormatted}</td>
+            <td class="p-3 text-center text-slate-400 font-mono text-[11px]">${formatPush}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function sortMatrixData(property) {
+    if (activeSortProperty === property) {
+        isSortingDirectionAscending = !isSortingDirectionAscending; // Toggle direction
+    } else {
+        activeSortProperty = property;
+        isSortingDirectionAscending = false; // Default to descending on property change
+    }
+    runDynamicMatrixEvaluation();
 }
 
 function renderLanguagesChart(languagesData) {
@@ -138,7 +196,7 @@ function renderLanguagesChart(languagesData) {
             labels: labels,
             datasets: [{
                 data: data,
-                backgroundColor: ['#34d399', '#22d3ee', '#3b82f6', '#f43f5e', '#eab308', '#64748b'],
+                backgroundColor: ['#22d3ee', '#10b981', '#3b82f6', '#f43f5e', '#eab308', '#475569'],
                 borderWidth: 0
             }]
         },
@@ -148,7 +206,7 @@ function renderLanguagesChart(languagesData) {
             plugins: {
                 legend: {
                     position: 'right',
-                    labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } }
+                    labels: { color: '#94a3b8', boxWidth: 8, font: { size: 9, weight: 'bold' } }
                 }
             }
         }
