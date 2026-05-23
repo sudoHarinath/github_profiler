@@ -34,8 +34,8 @@ async def get_developer_scorecard(username: str):
 async def serve_dashboard():
     return FileResponse(os.path.join("static", "index.html"))
 
-
-@app.get("/api/repo/{username}/{repo_name}/readme")
+# CHANGE THIS LINE: Remove the trailing "/readme" from the path string
+@app.get("/api/repo/{username}/{repo_name}")
 async def get_repo_readme_insights(username: str, repo_name: str):
     username_clean = username.strip().lower()
     repo_clean = repo_name.strip()
@@ -48,14 +48,12 @@ async def get_repo_readme_insights(username: str, repo_name: str):
     raw_readme_text = await github_client.fetch_repo_readme(username_clean, repo_clean)
     
     # Simple Keyword Extraction Engine
-    # Scans the README text layout for common deployment/library keywords
     target_keywords = [
         "docker", "kubernetes", "aws", "prisma", "graphql", "redux", "pytest",
         "jest", "ci/cd", "postgresql", "mongodb", "redis", "auth0", "jwt"
     ]
     detected = [kw for kw in target_keywords if kw in raw_readme_text.lower()]
     
-    # Extract the first 160 characters as a summary snapshot preview snippet
     clean_lines = [line.strip("#* \t") for line in raw_readme_text.split("\n") if line.strip()]
     summary_snippet = clean_lines[0] if clean_lines else "No description available."
     if len(summary_snippet) > 120:
